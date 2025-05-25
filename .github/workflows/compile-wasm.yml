@@ -29,9 +29,12 @@ jobs:
           cd noir/tooling/acvm_cli
           cargo build --release
 
+      - name: List ACVM-CLI binaries
+        run: ls -l noir/tooling/acvm_cli/target/release
+
       - name: Compile ACIR → WASM
         run: |
-          ./noir/tooling/acvm_cli/target/release/acvm-cli \
+          ./noir/tooling/acvm_cli/target/release/acvm_cli \
             compile \
             --circuit ../out.acir \
             --output circuit.wasm
