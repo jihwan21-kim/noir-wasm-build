@@ -1,0 +1,43 @@
+name: Build Noir Circuit Wasm
+
+on: [workflow_dispatch]
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Decode & decompress ACIR
+        run: |
+          # If you have a gzip+base64 .acir, adapt this. 
+          # Here we assume 'out.acir' is already raw binary in the repo.
+          ls -lh out.acir
+
+      - name: Set up Rust nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+
+      - name: Clone Noir (with submodules)
+        run: |
+          git clone --depth 1 --recursive https://github.com/noir-lang/noir.git noir
+
+      - name: Build the ACVM CLI
+        run: |
+          cd noir/tooling/acvm_cli
+          cargo build --release
+
+      - name: Compile ACIR → WASM
+        run: |
+          ./noir/tooling/acvm_cli/target/release/acvm-cli \
+            compile \
+            --circuit ../out.acir \
+            --output circuit.wasm
+
+      - name: Upload Wasm artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: circuit-wasm
+          path: circuit.wasm
