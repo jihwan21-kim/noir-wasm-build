@@ -37,7 +37,7 @@ jobs:
             --output circuit.wasm
 
       - name: Upload Wasm artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: circuit-wasm
           path: circuit.wasm
