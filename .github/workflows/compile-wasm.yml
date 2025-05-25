@@ -20,13 +20,10 @@ jobs:
           fi
           ls -lh out.acir
 
-      # 3) Clone the Noir monorepo into ./noir (with every workspace member) :contentReference[oaicite:0]{index=0}
-      - name: Checkout Noir source
-        uses: actions/checkout@v4
-        with:
-          repository: noir-lang/noir
-          path: noir
-          submodules: recursive
+      # 3) Clone the full Noir monorepo (with submodules) by hand
+      - name: Clone Noir monorepo
+        run: |
+          git clone --depth 1 --recursive https://github.com/noir-lang/noir.git noir
 
       # 4) Install Rust nightly so edition2024 crates (like acvm_cli) build :contentReference[oaicite:1]{index=1}
       - name: Set up Rust nightly
