@@ -1,46 +1,61 @@
 name: Build Noir Circuit Wasm
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
 
 jobs:
   build-wasm:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
+      # 1) Check out *this* repository (with your out.acir)
+      - name: Checkout ACIR repo
         uses: actions/checkout@v4
 
+      # 2) (Optional) decode+decompress if you're storing ACIR as base64  
+      #    Adapt or remove this step if you already committed a raw `out.acir`.
       - name: Decode & decompress ACIR
         run: |
-          # If you have a gzip+base64 .acir, adapt this. 
-          # Here we assume 'out.acir' is already raw binary in the repo.
+          if [ -f acir.b64 ]; then
+            node -r "fs=require('fs');z=require('zlib');b=fs.readFileSync('acir.b64','utf8');fs.writeFileSync('out.acir',z.gunzipSync(Buffer.from(b,'base64')))"
+          fi
           ls -lh out.acir
 
+      # 3) Clone the Noir monorepo into ./noir (with every workspace member) :contentReference[oaicite:0]{index=0}
+      - name: Checkout Noir source
+        uses: actions/checkout@v4
+        with:
+          repository: noir-lang/noir
+          path: noir
+          submodules: recursive
+
+      # 4) Install Rust nightly so edition2024 crates (like acvm_cli) build :contentReference[oaicite:1]{index=1}
       - name: Set up Rust nightly
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
+          override: true
 
-      - name: Clone Noir (with submodules)
-        run: |
-          git clone --depth 1 --recursive https://github.com/noir-lang/noir.git noir
+      # 5) Build the ACVM CLI crate under tooling/acvm_cli
+      - name: Build ACVM CLI
+        working-directory: noir/tooling/acvm_cli
+        run: cargo build --release
 
-      - name: Build the ACVM CLI
-        run: |
-          cd noir/tooling/acvm_cli
-          cargo build --release
-
-      - name: List ACVM-CLI binaries
+      # 6) Debug: show what got built
+      - name: List built binaries
         run: ls -l noir/tooling/acvm_cli/target/release
 
-      - name: Compile ACIR → WASM
+      # 7) Compile out.acir → program.wasm using the freshly built CLI
+      - name: Compile ACIR → Wasm
+        working-directory: noir/tooling/acvm_cli
         run: |
-          ./noir/tooling/acvm_cli/target/release/acvm_cli \
+          ./target/release/acvm_cli \
             compile \
-            --circuit ../out.acir \
-            --output circuit.wasm
+            --circuit ../../../out.acir \
+            --output ../../../program.wasm
 
+      # 8) Upload the Wasm so you can download it from the Actions UI
       - name: Upload Wasm artifact
         uses: actions/upload-artifact@v4
         with:
           name: circuit-wasm
-          path: circuit.wasm
+          path: program.wasm
